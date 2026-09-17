@@ -1,58 +1,39 @@
 {% extends "base.html" %}
 {% block title %}WhatsApp simulado — Claro One{% endblock %}
-{% block styles %}<link rel="stylesheet" href="{{ url_for('static', path='/css/whatsapp.css') }}?v=20260904.2">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', path='/css/whatsapp.css') }}?v={{ asset_version }}">{% endblock %}
 {% block content %}
 <section class="experience-shell message-experience">
   <aside class="experience-story">
     <span class="eyebrow green">CONTEXTO COMO CONVERSA</span><h1>WhatsApp</h1>
-    <p>O contexto anterior vira uma retomada natural. O cliente é encaminhado corretamente sem precisar repetir o problema.</p>
-    <div class="principle-card"><span>CCE</span><i>→</i><strong>CONVERSA</strong><small>Resumo, destino e continuidade</small></div>
-    <div class="privacy-note">Simulação de mensageria · Sem integração com a Meta</div>
+    <p>O cliente segue o mesmo caminho do telefone: protocolo, CPF e confirmação por SMS. Com o contexto recuperado, ele escolhe continuar o atendimento ou abrir outro tema, e a conversa volta para a CCE ao ser finalizada.</p>
+    <ol class="story-steps green">
+      <li><b>1</b><span>Protocolo (opcional) e CPF na conversa</span></li>
+      <li><b>2</b><span>Retorno: código por SMS antes de mostrar o atendimento</span></li>
+      <li><b>3</b><span>Botões: continuar atendimento ou falar sobre outro tema</span></li>
+      <li><b>4</b><span>“Finalizar conversa”: a IA consolida o que foi dito e atualiza a CCE</span></li>
+    </ol>
+    <div class="privacy-note">Simulação de mensageria · Sem integração com a Meta · SMS simulado sem custo</div>
   </aside>
-  <div class="device message-device">
-    <header class="chat-header"><a href="/">←</a><span class="chat-avatar">C1</span><div><strong>Claro One</strong><small>Simulação de mensageria</small></div><b>⋮</b></header>
-    <div id="wa-alert" class="inline-alert hidden"></div>
-    <div class="chat-body" id="chat-body">
-      <section class="wa-step active" data-step="search">
-        <div class="date-chip">Hoje</div>
-        <div class="bubble incoming">Olá! Para localizar um atendimento recente, informe seu CPF.<time>agora</time></div>
-        <div class="cpf-chat-form"><input class="text-input cpf-input" id="wa-cpf" maxlength="14" inputmode="numeric" placeholder="000.000.000-00"><button id="wa-search" aria-label="Pesquisar">→</button></div>
-        <small class="demo-hint">Use o mesmo CPF informado no telefone</small>
-      </section>
-      <section class="wa-step" data-step="found">
-        <div class="bubble outgoing" id="wa-cpf-bubble"></div>
-        <div class="bubble incoming">Encontrei um atendimento recente associado a este CPF.<time>agora</time></div>
-        <article class="recent-case"><span class="found-label">ATENDIMENTO RECENTE ENCONTRADO</span><strong id="wa-problem"></strong><dl><div><dt>Categoria</dt><dd id="wa-category"></dd></div><div><dt>Destino</dt><dd id="wa-destination-found"></dd></div><div><dt>Status</dt><dd id="wa-status"></dd></div><div><dt>Quando</dt><dd id="wa-when"></dd></div><div><dt>Canal de origem</dt><dd id="wa-origin"></dd></div></dl><button class="button wa-primary full" id="wa-resume">Retomar atendimento</button><button class="button text-button full" id="wa-new">Iniciar novo atendimento</button></article>
-      </section>
-      <section class="wa-step" data-step="empty">
-        <div class="bubble incoming">Não encontrei atendimento recente. Você pode iniciar uma nova conversa por aqui.<time>agora</time></div>
-        <button class="button wa-primary" id="wa-empty-new">Iniciar atendimento</button>
-      </section>
-      <section class="wa-step" data-step="compose">
-        <div class="date-chip">Novo atendimento</div>
-        <div class="bubble incoming">Olá, <strong id="wa-compose-name"></strong>. Conte em uma mensagem como podemos ajudar.<time>agora</time></div>
-        <div class="message-examples">Exemplo: “Minha internet está sem funcionar desde ontem.”</div>
-      </section>
-      <section class="wa-step" data-step="creating">
-        <div class="bubble outgoing" id="wa-new-message"></div>
-        <div class="system-message context-loading"><i></i> IA de Contexto interpretando sua mensagem...</div>
-      </section>
-      <section class="wa-step" data-step="created">
-        <div class="bubble outgoing" id="wa-created-message"></div>
-        <div class="bubble incoming highlight">Entendi seu atendimento:<br><strong id="wa-created-problem"></strong><time>agora</time></div>
-        <div class="bubble incoming">Vou direcionar você para: <strong id="wa-created-destination"></strong><time>agora</time></div>
-        <div class="bubble agent"><span class="mini-avatar">A</span><strong>Especialista Claro One</strong><p id="wa-created-agent"></p><time>agora</time></div>
-      </section>
-      <section class="wa-step" data-step="resumed">
-        <div class="date-chip">Sessão retomada</div>
-        <div class="bubble incoming highlight">Encontrei seu atendimento anterior.<br><br>Você estava tratando de:<br><strong id="wa-resumed-problem"></strong><time>agora</time></div>
-        <div class="bubble incoming">Vou continuar seu atendimento com: <strong id="wa-destination"></strong><time>agora</time></div>
-        <div class="system-message"><i></i> Conectando você a um especialista...</div>
-        <div class="bubble agent hidden" id="wa-agent-message"><span class="mini-avatar">A</span><strong>Especialista Claro One</strong><p id="wa-agent-text"></p><time>agora</time></div>
-      </section>
+  <div class="device message-device" id="wa-device">
+    <header class="chat-header">
+      <a href="/" aria-label="Voltar para o início">←</a>
+      <span class="chat-avatar">CCE</span>
+      <div><strong>Claro</strong><small id="wa-presence">Conta comercial · simulação</small></div>
+      <button type="button" id="wa-restart" title="Reiniciar conversa" aria-label="Reiniciar conversa">↺</button>
+    </header>
+    <div id="sms-slot"></div>
+    <div class="chat-body" id="chat-body" aria-live="polite"></div>
+    <div class="chat-toolbar hidden" id="chat-toolbar">
+      <span id="chat-toolbar-label"></span>
+      <button type="button" class="button" id="wa-finish">Finalizar conversa</button>
     </div>
-    <footer class="chat-input"><span>＋</span><input id="wa-message-input" disabled maxlength="2000" placeholder="Digite sua mensagem"><button id="wa-send" disabled aria-label="Enviar mensagem">➤</button></footer>
+    <div class="chat-hint" id="chat-hint">Retomada: envie o protocolo {{ demo_protocol }} · Primeiro contato: toque em “Não tenho protocolo”</div>
+    <footer class="chat-input">
+      <span aria-hidden="true">＋</span>
+      <input id="wa-input" maxlength="2000" placeholder="Digite sua mensagem" autocomplete="off" aria-label="Mensagem">
+      <button type="button" id="wa-send" aria-label="Enviar mensagem">➤</button>
+    </footer>
   </div>
 </section>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', path='/js/whatsapp.js') }}?v=20260904.2"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='/js/whatsapp.js') }}?v={{ asset_version }}"></script>{% endblock %}

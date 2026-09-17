@@ -13,6 +13,22 @@ USO NORMAL
 7. Ao iniciar uma ligacao, clique em Permitir para usar o microfone.
 8. Para encerrar o servidor, volte ao terminal e pressione Ctrl+C.
 
+ROTEIRO DE DEMONSTRACAO
+RETORNO (cliente que ja tem contexto)
+  Telefone: digite o protocolo 123, depois o CPF 123.456.789-00.
+  A URA envia um codigo por SMS (simulado: aparece como notificacao na tela).
+  Digite o codigo, depois 1 para continuar o atendimento ou 2 para outro tema.
+  O mesmo caminho funciona no WhatsApp. No Minha Claro nao ha SMS: o login ja autentica.
+PRIMEIRO CONTATO (cliente sem contexto)
+  Telefone: toque em "Nao tenho protocolo" e use o CPF 987.654.321-00.
+  Escolha o assunto na URA, grave pelo microfone ou envie um audio da pasta Audios.
+COCKPIT
+  Abra o Cockpit para buscar por CPF, protocolo, departamento ou canal,
+  ver a timeline dos canais navegados e o resumo executivo do cliente.
+  A aba "Visao do gestor" mostra os indicadores de funcionamento da solucao.
+RESET
+  Na Home, clique em "Limpar / reiniciar demonstracao" para recriar o historico ficticio.
+
 CLIENTES FICTICIOS
 123.456.789-00 - Lucas de Alencar
 987.654.321-00 - Marina Costa
@@ -27,4 +43,5 @@ CLIENTES FICTICIOS
 999.000.111-22 - Henrique Barros Dias
 101.202.303-44 - Isabela Monteiro Luz
 
-RESET: na Home, clique em "Limpar / reiniciar demonstracao"
+Marina Costa, Henrique Barros Dias e Isabela Monteiro Luz comecam sem historico,
+para demonstrar o primeiro contato. Os demais ja possuem jornada de demonstracao.

@@ -1,31 +1,74 @@
 {% extends "base.html" %}
 {% block title %}Minha Claro — Continuidade{% endblock %}
-{% block styles %}<link rel="stylesheet" href="{{ url_for('static', path='/css/minha_claro.css') }}?v=20260904.2">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', path='/css/minha_claro.css') }}?v={{ asset_version }}">{% endblock %}
 {% block content %}
 <section class="app-demo-shell">
   <aside class="app-side">
     <span class="eyebrow">CONTEXTO COMO NAVEGAÇÃO</span><h1>Minha Claro</h1>
-    <p>O mesmo contexto reorganiza o autoatendimento e leva o cliente diretamente à área capaz de resolver sua solicitação.</p>
+    <p>No app, o login já identifica o cliente. O contexto aberto em outro canal leva o cliente direto à área certa, mostra o resumo do último atendimento e permite registrar novas informações, que voltam para a CCE.</p>
+    <ol class="story-steps">
+      <li><b>1</b><span>Login (simulado) com CPF e protocolo opcional, sem SMS</span></li>
+      <li><b>2</b><span>Continuar de onde parou ou falar sobre outro assunto</span></li>
+      <li><b>3</b><span>A área mais adequada abre com o resumo da última sessão</span></li>
+      <li><b>4</b><span>Cada solicitação enviada pelo app é interpretada pela IA e registrada</span></li>
+    </ol>
     <div class="principle-card red"><span>CCE</span><i>→</i><strong>NAVEGAÇÃO</strong><small>Atalho para a funcionalidade correta</small></div>
   </aside>
-  <div class="selfcare-app">
-    <header class="app-header"><a href="/" class="app-logo">minha <b>claro</b></a><div><span>Dados simulados</span><i class="user-dot"></i></div></header>
-    <div id="mc-alert" class="inline-alert hidden"></div>
+  <div class="selfcare-app" id="mc-app">
+    <header class="app-header">
+      <a href="/" class="app-logo">minha <b>claro</b></a>
+      <div><span id="mc-header-user">Dados simulados</span><i class="user-dot" id="mc-user-dot"></i><button type="button" class="back-button hidden" id="mc-logout">Sair</button></div>
+    </header>
+    <div id="mc-alert" class="inline-alert hidden" role="alert"></div>
+
     <section class="mc-step login-step active" data-step="login">
-      <div class="login-art"><span>C1</span></div><span class="eyebrow">BEM-VINDO</span><h2>Acesse sua experiência</h2><p>Informe o CPF do cliente de demonstração.</p>
-      <label class="field-label" for="mc-cpf">CPF</label><input class="text-input cpf-input" id="mc-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">
-      <button class="button primary full" id="mc-search">Acessar</button><small class="demo-hint">Teste com 123.456.789-00</small>
+      <div class="login-art"><span>CCE</span></div>
+      <span class="eyebrow">BEM-VINDO</span><h2>Acesse sua conta</h2>
+      <p>Login simulado: no app o cliente já está autenticado, por isso não pedimos código por SMS.</p>
+      <label class="field-label" for="mc-cpf">CPF</label>
+      <input class="text-input cpf-input" id="mc-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off">
+      <label class="field-label" for="mc-protocol">PROTOCOLO <small>(opcional)</small></label>
+      <input class="text-input" id="mc-protocol" inputmode="numeric" maxlength="12" placeholder="Ex.: {{ demo_protocol }}" autocomplete="off">
+      <button class="button primary full" id="mc-login">Entrar</button>
+      <small class="demo-hint">Teste com 123.456.789-00 e o protocolo {{ demo_protocol }}</small>
     </section>
-    <section class="mc-step dashboard-step" data-step="found">
+
+    <section class="mc-step dashboard-step" data-step="home">
       <div class="app-welcome"><div><small>Olá,</small><h2 id="mc-name"></h2></div><span id="mc-initials"></span></div>
-      <article class="ongoing-card" id="mc-ongoing-card"><div class="ongoing-top"><span><i></i> ATENDIMENTO EM ANDAMENTO</span><small id="mc-protocol"></small></div><h3 id="mc-context-title"></h3><p id="mc-problem"></p><div class="ongoing-context-meta"><span id="mc-category"></span><span id="mc-destination"></span></div><div class="entity-preview" id="mc-entity-preview"></div><button class="button white-button" id="mc-continue">Continuar de onde parei <b>→</b></button></article>
-      <div class="manual-home hidden" id="mc-manual-home"><div class="manual-welcome"><span>ÁREA DE AUTOATENDIMENTO</span><h3>O que você precisa?</h3><p>Nenhum atendimento está em andamento. Escolha uma área para navegar.</p></div><h3 class="section-mini-title">Serviços</h3><div class="quick-grid"><button data-area="billing">▤<small>Faturas</small></button><button data-area="payments">$<small>Pagamentos</small></button><button data-area="internet">⌁<small>Internet</small></button><button data-area="phone">▯<small>Minha linha</small></button><button data-area="plans">＋<small>Planos</small></button></div></div>
+      <div id="mc-open-cases"></div>
+      <h3 class="section-mini-title">Serviços</h3>
+      <div class="quick-grid">
+        <button data-area="billing"><i>▤</i><small>Faturas</small></button>
+        <button data-area="payments"><i>$</i><small>Pagamentos</small></button>
+        <button data-area="internet"><i>⌁</i><small>Internet</small></button>
+        <button data-area="phone"><i>▯</i><small>Minha linha</small></button>
+        <button data-area="tv"><i>▣</i><small>TV</small></button>
+        <button data-area="plans"><i>＋</i><small>Planos</small></button>
+        <button data-area="address"><i>⌂</i><small>Endereço</small></button>
+        <button data-area="help"><i>?</i><small>Ajuda</small></button>
+      </div>
+      <article class="help-card">
+        <div><span>PRECISA DE AJUDA?</span><h3>Abra uma solicitação</h3><p>Descreva o que você precisa. A IA identifica o assunto e leva você à área certa.</p></div>
+        <button class="button primary" id="mc-new-request" type="button">Nova solicitação</button>
+      </article>
     </section>
-    <section class="mc-step adaptive-step" data-step="adaptive">
-      <button class="back-button" id="mc-back">← Visão geral</button>
+
+    <section class="mc-step adaptive-step" data-step="area">
+      <button class="back-button" id="mc-back" type="button">← Início</button>
+      <div id="mc-area-notice"></div>
+      <div id="mc-context-summary"></div>
       <div id="adaptive-content"></div>
+      <form class="request-form" id="mc-request-form">
+        <label for="mc-request-text"><strong id="mc-form-title"></strong><small id="mc-form-subtitle"></small></label>
+        <textarea class="text-input" id="mc-request-text" maxlength="2000" rows="3"></textarea>
+        <div class="request-actions">
+          <small>🔒 CPF, cartão, senha e contatos são mascarados antes da IA.</small>
+          <button class="button primary" type="submit" id="mc-request-submit">Enviar</button>
+        </div>
+      </form>
+      <div id="mc-request-result"></div>
     </section>
   </div>
 </section>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', path='/js/minha_claro.js') }}?v=20260904.2"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='/js/minha_claro.js') }}?v={{ asset_version }}"></script>{% endblock %}

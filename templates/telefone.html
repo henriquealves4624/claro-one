@@ -1,62 +1,85 @@
 {% extends "base.html" %}
 {% block title %}Telefone / URA — Claro One{% endblock %}
-{% block styles %}<link rel="stylesheet" href="{{ url_for('static', path='/css/telefone.css') }}?v=20260904.2">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', path='/css/telefone.css') }}?v={{ asset_version }}">{% endblock %}
 {% block content %}
 <section class="experience-shell phone-experience">
   <aside class="experience-story">
-    <span class="eyebrow">CANAL DE ORIGEM</span><h1>Telefone / URA</h1>
-    <p>A ligação inicia o atendimento. Ao final, duas IAs independentes transformam voz em um contexto estruturado e reutilizável.</p>
-    <div class="mini-flow"><span class="active">ÁUDIO</span><i>→</i><span>IA 1<br><small>texto</small></span><i>→</i><span>IA 2<br><small>case</small></span><i>→</i><span>CCE</span></div>
-    <div class="privacy-note">Simulação de telefonia · Nenhuma ligação real é realizada</div>
+    <span class="eyebrow">CANAL DE VOZ</span><h1>Telefone / URA</h1>
+    <p>O cliente se identifica pelo teclado. No retorno, a URA confirma a identidade por SMS e oferece continuar o atendimento sem repetir a história.</p>
+    <ol class="story-steps">
+      <li><b>1</b><span>Protocolo (opcional) e CPF pelo teclado do telefone</span></li>
+      <li><b>2</b><span>Retorno: código por SMS antes de revelar qualquer contexto</span></li>
+      <li><b>3</b><span>1 continua o atendimento com o especialista · 2 abre outro tema</span></li>
+      <li><b>4</b><span>A fala vira texto (IA 1) e contexto (IA 2), que atualiza a CCE</span></li>
+    </ol>
+    <div class="mini-flow"><span class="active">ÁUDIO</span><i>→</i><span>IA 1<br><small>texto</small></span><i>→</i><span>IA 2<br><small>contexto</small></span><i>→</i><span>CCE</span></div>
+    <div class="privacy-note">Simulação de telefonia · Nenhuma ligação real é realizada · SMS simulado sem custo</div>
   </aside>
 
-  <div class="device phone-device">
-    <div class="device-top"><span class="signal-dot"></span><strong>CLARO ONE</strong><span id="device-time"></span></div>
-    <div id="phone-alert" class="inline-alert hidden"></div>
+  <div class="device phone-device" id="phone-device">
+    <div class="device-top"><span class="signal-dot"></span><strong>CLARO</strong><span id="device-time"></span></div>
+    <div id="sms-slot"></div>
+    <div id="phone-alert" class="inline-alert hidden" role="alert"></div>
 
-    <section class="phone-step active" data-step="cpf">
-      <div class="step-label">ATENDIMENTO CLARO ONE</div>
-      <h2>Para começar,<br>informe seu CPF.</h2>
-      <p>Usaremos o CPF apenas para localizar seu contexto de demonstração.</p>
-      <label class="field-label" for="phone-cpf">CPF</label>
-      <input class="text-input cpf-input" id="phone-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off">
-      <button class="button primary full" id="phone-cpf-submit">Continuar</button>
-      <small class="demo-hint">Teste com 123.456.789-00</small>
+    <section class="phone-step active" data-step="protocol">
+      <div class="step-label">ATENDIMENTO CLARO · URA</div>
+      <blockquote class="ura-voice">“Olá, você ligou para a Claro. Digite o número do protocolo para iniciarmos seu atendimento. Se é um novo atendimento, pressione a tecla jogo da velha.”</blockquote>
+      <div class="dial-display" aria-live="polite"><span class="dial-value" id="protocol-display"></span><span class="dial-placeholder">Número do protocolo</span></div>
+      <small class="demo-hint">Retomada: teste com o protocolo {{ demo_protocol }} · Primeiro contato: toque em “Não tenho protocolo”</small>
     </section>
 
-    <section class="phone-step existing-session" data-step="existing">
-      <button class="back-button" data-back="cpf">← Voltar</button>
-      <span class="found-context-label">CCE ATIVA ENCONTRADA</span>
-      <h2>Você já possui um<br>atendimento em aberto.</h2>
-      <p>Podemos usar o contexto existente para encaminhar você sem repetir o problema.</p>
+    <section class="phone-step" data-step="cpf">
+      <div class="step-label">IDENTIFICAÇÃO</div>
+      <blockquote class="ura-voice">“Agora, digite o seu CPF e confirme com a tecla jogo da velha.”</blockquote>
+      <div class="dial-display" aria-live="polite"><span class="dial-value" id="cpf-display"></span><span class="dial-placeholder">000.000.000-00</span></div>
+      <small class="demo-hint" id="cpf-hint"></small>
+    </section>
+
+    <section class="phone-step" data-step="sms">
+      <div class="step-label">VERIFICAÇÃO DE SEGURANÇA</div>
+      <blockquote class="ura-voice">“Identificamos um atendimento em aberto. Para sua segurança, enviamos um código por SMS para o celular <b id="sms-phone"></b>. Digite o código de 6 dígitos.”</blockquote>
+      <div class="code-display" id="code-display" aria-live="polite"></div>
+      <div class="inline-links"><button class="back-button" id="sms-resend">Reenviar código</button></div>
+      <small class="demo-hint" id="sms-hint">SMS simulado: o código aparece na notificação no topo do aparelho</small>
+    </section>
+
+    <section class="phone-step" data-step="return-menu">
+      <div class="step-label">ATENDIMENTO EM ABERTO</div>
+      <blockquote class="ura-voice">“Você já possui um atendimento em aberto sobre o tema <b id="return-topic"></b>. Digite 1 para continuar esse atendimento ou 2 para falar sobre outro tema.”</blockquote>
       <article class="phone-context-card">
-        <span id="phone-existing-protocol"></span>
-        <strong id="phone-existing-problem"></strong>
-        <dl><div><dt>Origem</dt><dd id="phone-existing-origin"></dd></div><div><dt>Destino</dt><dd id="phone-existing-destination"></dd></div></dl>
+        <span>PROTOCOLO <b id="return-protocol"></b> · <em id="return-status"></em></span>
+        <strong id="return-problem"></strong>
+        <dl>
+          <div><dt>Aberto em</dt><dd id="return-opened"></dd></div>
+          <div><dt>Último contato</dt><dd id="return-last"></dd></div>
+          <div><dt>Departamento</dt><dd id="return-department"></dd></div>
+        </dl>
       </article>
-      <button class="button primary full" id="phone-continue-session">Continuar atendimento</button>
-      <button class="button text-button full" id="phone-new-session">Começar novo atendimento</button>
-      <small class="replacement-note">Ao começar de novo, o contexto anterior será removido.</small>
+      <div class="ura-options">
+        <button data-option="1"><b>1</b><span>Continuar este atendimento</span></button>
+        <button data-option="2"><b>2</b><span>Falar sobre outro tema<small>abre um novo protocolo</small></span></button>
+      </div>
     </section>
 
     <section class="phone-step" data-step="ura">
-      <button class="back-button" data-back="cpf">← Voltar</button>
-      <span class="welcome-pill">Olá, <strong id="phone-customer-name"></strong></span>
-      <h2>Como podemos ajudar?</h2>
-      <p>Selecione uma opção da URA.</p>
+      <div class="step-label">MENU DE ATENDIMENTO</div>
+      <blockquote class="ura-voice">“<span id="ura-greeting">Olá</span>. Para agilizar, digite a opção do assunto:”</blockquote>
       <div class="ura-grid">
-        <button data-department="INTERNET"><b>1</b><span>Internet</span></button>
-        <button data-department="TELEFONIA"><b>2</b><span>Telefonia</span></button>
-        <button data-department="FATURAMENTO"><b>3</b><span>Fatura e pagamentos</span></button>
-        <button data-department="CANCELAMENTO"><b>4</b><span>Cancelamento</span></button>
-        <button data-department="OUTROS"><b>5</b><span>Outros</span></button>
+        {% for category in taxonomy.categories %}
+        <button data-department="{{ category.value }}" data-digit="{{ loop.index }}"><b>{{ loop.index }}</b><span>{{ category.label }}</span></button>
+        {% endfor %}
       </div>
     </section>
 
     <section class="phone-step call-screen" data-step="call">
       <span class="call-state preparing" id="call-state"><i></i> <span id="call-state-text">PREPARANDO LIGAÇÃO</span></span>
-      <div class="avatar" id="phone-avatar">LA</div>
-      <h2 id="call-customer-name"></h2><p id="call-department"></p>
+      <div class="avatar" id="phone-avatar"></div>
+      <h2 id="call-title"></h2><p id="call-subtitle"></p>
+      <div class="call-context hidden" id="call-context">
+        <small>CONTEXTO RECUPERADO · PROTOCOLO <b id="call-context-protocol"></b></small>
+        <strong id="call-context-problem"></strong>
+        <span id="call-context-summary"></span>
+      </div>
       <div class="call-timer" id="call-timer">00:00</div>
       <div class="microphone-status" id="microphone-status"><i></i><span>Microfone ainda não iniciado</span></div>
       <button class="button primary full" id="start-call">Iniciar ligação</button>
@@ -77,35 +100,37 @@
       <p>As etapas refletem o processamento real do backend.</p>
       <ol class="processing-list" id="processing-list">
         <li data-process="audio"><i></i><span><b>Enviando gravação</b><small>Áudio enviado com segurança ao backend</small></span><em>Aguardando</em></li>
-        <li data-process="transcription"><i></i><span><b>IA de Transcrição</b><small>Áudio → texto em português</small></span><em>Aguardando</em></li>
-        <li data-process="transcribed"><i></i><span><b>Transcrição concluída</b><small>Texto armazenado na CCE</small></span><em>Aguardando</em></li>
-        <li data-process="context"><i></i><span><b>IA de Contexto</b><small>Texto + URA → case estruturado</small></span><em>Aguardando</em></li>
-        <li data-process="structured"><i></i><span><b>Contexto estruturado</b><small>Problema, entidades e destino identificados</small></span><em>Aguardando</em></li>
-        <li data-process="updated"><i></i><span><b>CCE criada</b><small>Contexto disponível para os demais canais</small></span><em>Aguardando</em></li>
+        <li data-process="transcription"><i></i><span><b>IA de transcrição</b><small>Áudio → texto em português; a gravação é descartada</small></span><em>Aguardando</em></li>
+        <li data-process="privacy"><i></i><span><b>Proteção de dados</b><small>CPF, cartão, senha e contatos mascarados antes da IA</small></span><em>Aguardando</em></li>
+        <li data-process="context"><i></i><span><b>IA de contexto</b><small>Texto + histórico do protocolo → contexto estruturado</small></span><em>Aguardando</em></li>
+        <li data-process="updated"><i></i><span><b>CCE atualizada</b><small>Contexto disponível para os demais canais</small></span><em>Aguardando</em></li>
       </ol>
       <button class="button secondary full hidden" id="retry-processing">Tentar novamente</button>
       <button class="button text-button full hidden" id="choose-another-audio">Escolher outra gravação</button>
     </section>
 
     <section class="phone-step result-screen" data-step="result">
-      <div class="success-check">✓</div><span class="eyebrow">CONTEXTO PRESERVADO</span>
-      <h2>Atendimento contextualizado com sucesso</h2>
-      <div class="protocol-box"><span>CCE</span><strong id="result-protocol"></strong></div>
-      <dl class="result-details"><div><dt>Problema</dt><dd id="result-problem"></dd></div><div><dt>Resumo</dt><dd id="result-summary"></dd></div><div><dt>Setor de destino</dt><dd id="result-destination"></dd></div></dl>
-      <div class="ttl-card"><span>Sessão disponível por</span><strong id="result-ttl">02:00:00</strong></div>
-      <div class="result-actions"><a class="button whatsapp-button" id="go-whatsapp" href="/whatsapp">Ir para WhatsApp</a><a class="button primary" id="go-minha-claro" href="/minha-claro">Ir para Minha Claro</a><a class="button ghost" id="view-cce" href="/debug">Ver CCE</a></div>
+      <div class="success-check">✓</div><span class="eyebrow" id="result-eyebrow">CONTEXTO REGISTRADO</span>
+      <h2 id="result-title">Atendimento registrado na CCE</h2>
+      <blockquote class="ura-voice compact" id="result-voice"></blockquote>
+      <div class="protocol-box"><span>PROTOCOLO</span><strong id="result-protocol"></strong></div>
+      <dl class="result-details"><div><dt>Tema</dt><dd id="result-topic"></dd></div><div><dt>Resumo deste contato</dt><dd id="result-summary"></dd></div><div><dt>Departamento</dt><dd id="result-destination"></dd></div></dl>
+      <div class="result-actions"><a class="button whatsapp-button" id="go-whatsapp" href="/whatsapp">Continuar no WhatsApp</a><a class="button primary" id="go-minha-claro" href="/minha-claro">Continuar no Minha Claro</a><a class="button ghost" id="view-cockpit" href="/atendente">Ver no Cockpit</a></div>
+      <button class="button text-button full" id="phone-restart">Encerrar e fazer nova ligação</button>
     </section>
 
-    <section class="phone-step routed-screen" data-step="routed">
-      <div class="route-icon"><span>✓</span></div>
-      <span class="eyebrow">CONTEXTO RECUPERADO</span>
-      <h2>Você será conectado<br>a um especialista.</h2>
-      <p>O atendente já receberá o contexto. Não será necessário explicar tudo novamente.</p>
-      <div class="routing-card"><small>ASSUNTO IDENTIFICADO</small><strong id="phone-routed-problem"></strong><span>Encaminhando para <b id="phone-routed-destination"></b></span></div>
-      <div class="routing-progress"><i></i><span>Procurando atendente disponível...</span></div>
-      <a class="button secondary full" id="phone-routed-cockpit" href="/atendente">Visualizar no Cockpit</a>
-    </section>
+    <div class="keypad-area" id="keypad-area">
+      <div class="keypad" id="keypad" role="group" aria-label="Teclado do telefone">
+        {% for key, letters in [('1',''),('2','ABC'),('3','DEF'),('4','GHI'),('5','JKL'),('6','MNO'),('7','PQRS'),('8','TUV'),('9','WXYZ'),('*','apagar'),('0','+'),('#','confirmar')] %}
+        <button type="button" data-key="{{ key }}" aria-label="{{ key }}"><b>{{ key }}</b><small>{{ letters }}</small></button>
+        {% endfor %}
+      </div>
+      <div class="keypad-actions">
+        <button type="button" class="button text-button" id="keypad-secondary">Não tenho protocolo</button>
+        <button type="button" class="button primary" id="keypad-confirm">Confirmar #</button>
+      </div>
+    </div>
   </div>
 </section>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', path='/js/telefone.js') }}?v=20260904.2"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='/js/telefone.js') }}?v={{ asset_version }}"></script>{% endblock %}

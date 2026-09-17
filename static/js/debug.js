@@ -1,31 +1,29 @@
 (() => {
-  const { api, friendly, brDate, formatCpf, toast } = ClaroOne;
-  const categoryLabel = ClaroOne.categoryLabel || friendly;
-  const departmentLabel = ClaroOne.departmentLabel || friendly;
+  const { api, el, friendly, brDate, maskCpf, toast, categoryLabel, departmentLabel, channelLabel, statusLabel } = ClaroOne;
   const tableBody = document.getElementById('debug-sessions');
   const jsonCode = document.getElementById('session-json');
   const modal = document.getElementById('reset-modal');
 
-  const maskCpf = cpf => {
-    const formatted = formatCpf(cpf);
-    return `***.${formatted.slice(4, 11)}-**`;
-  };
-  function ttl(expiresAt, status) {
-    if (['RESOLVIDA', 'EXPIRADA'].includes(status)) return '—';
-    const seconds = Math.max(0, Math.floor((new Date(expiresAt) - Date.now()) / 1000));
-    return `${String(Math.floor(seconds / 3600)).padStart(2, '0')}:${String(Math.floor(seconds % 3600 / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-  }
-
   async function load() {
     const sessions = await api('/api/sessions?include_closed=true');
-    tableBody.innerHTML = '';
-    if (!sessions.length) tableBody.innerHTML = '<tr><td colspan="9">Nenhuma CCE armazenada.</td></tr>';
+    tableBody.replaceChildren();
+    if (!sessions.length) {
+      tableBody.append(el('tr', {}, el('td', { colspan: '10' }, 'Nenhum protocolo armazenado.')));
+      return;
+    }
     sessions.forEach(item => {
-      const row = document.createElement('tr');
-      row.dataset.id = item.id;
-      row.innerHTML = `<td>${item.protocol}</td><td>${maskCpf(item.cpf)}</td><td>${item.customer_name}</td><td><span class="table-status">${friendly(item.status)}</span></td><td>${categoryLabel(item.category)}</td><td>${departmentLabel(item.destination_department)}</td><td>${friendly(item.current_channel)}</td><td>${brDate(item.created_at)}</td><td>${brDate(item.expires_at)}<strong class="ttl-value" data-expires="${item.expires_at}" data-status="${item.status}">${ttl(item.expires_at, item.status)}</strong></td>`;
-      row.addEventListener('click', () => show(item.id, row));
-      tableBody.appendChild(row);
+      const row = el('tr', { dataset: { id: item.id }, onclick: () => show(item.id, row) },
+        el('td', {}, item.protocol),
+        el('td', {}, maskCpf(item.cpf)),
+        el('td', {}, item.customer_name),
+        el('td', {}, el('span', { class: 'table-status' }, statusLabel(item.status))),
+        el('td', {}, categoryLabel(item.category)),
+        el('td', {}, departmentLabel(item.destination_department)),
+        el('td', {}, channelLabel(item.current_channel)),
+        el('td', {}, item.assigned_agent || '—'),
+        el('td', {}, brDate(item.created_at)),
+        el('td', {}, brDate(item.updated_at)));
+      tableBody.append(row);
     });
     const queryId = new URLSearchParams(location.search).get('session');
     const targetRow = queryId && tableBody.querySelector(`[data-id="${CSS.escape(queryId)}"]`);
@@ -36,7 +34,7 @@
     const full = await api(`/api/sessions/${id}`);
     tableBody.querySelectorAll('tr').forEach(item => item.classList.remove('selected'));
     row?.classList.add('selected');
-    document.getElementById('json-protocol').textContent = full.protocol;
+    document.getElementById('json-protocol').textContent = `Protocolo ${full.protocol} · ${full.interactions.length} contato(s) · ${full.events.length} evento(s)`;
     jsonCode.textContent = JSON.stringify(full, null, 2);
   }
 
@@ -45,14 +43,15 @@
     try { await navigator.clipboard.writeText(jsonCode.textContent); toast('JSON copiado.'); }
     catch { toast('Não foi possível copiar o JSON.', true); }
   });
+
   let resetEndpoint = '/api/demo/reset';
   function openConfirmation(mode) {
     const isReset = mode === 'reset';
     resetEndpoint = isReset ? '/api/demo/reset' : '/api/demo/clear';
     document.getElementById('reset-title').textContent = isReset ? 'Reiniciar demonstração?' : 'Limpar dados da demonstração?';
     document.getElementById('reset-description').textContent = isReset
-      ? 'Todas as CCEs, eventos e gravações serão removidos. Os clientes fictícios serão preservados e a demonstração ficará pronta para recomeçar.'
-      : 'Todas as CCEs, eventos e gravações serão removidos. Os clientes fictícios serão preservados.';
+      ? 'Todos os protocolos, contatos e gravações serão removidos e o histórico fictício de demonstração será recriado.'
+      : 'Todos os protocolos, contatos e gravações serão removidos, deixando a base vazia. Os clientes fictícios são preservados.';
     document.getElementById('confirm-reset').textContent = isReset ? 'Sim, reiniciar' : 'Sim, limpar';
     modal.showModal();
   }
@@ -60,16 +59,19 @@
   document.getElementById('debug-reset').addEventListener('click', () => openConfirmation('reset'));
   document.getElementById('cancel-reset').addEventListener('click', () => modal.close());
   document.getElementById('confirm-reset').addEventListener('click', async () => {
-    const button = document.getElementById('confirm-reset'); button.disabled = true;
+    const button = document.getElementById('confirm-reset');
+    button.disabled = true;
     try {
       await api(resetEndpoint, { method: 'POST' });
-      localStorage.clear(); modal.close();
-      document.getElementById('json-protocol').textContent = 'Selecione uma CCE';
-      jsonCode.textContent = '{\n  "mensagem": "Selecione uma sessão na tabela"\n}';
-      await load(); toast('Demonstração reiniciada.');
+      try { sessionStorage.clear(); } catch { /* armazenamento indisponível */ }
+      modal.close();
+      document.getElementById('json-protocol').textContent = 'Selecione um protocolo';
+      jsonCode.textContent = '{\n  "mensagem": "Selecione um protocolo na tabela"\n}';
+      await load();
+      toast(resetEndpoint.endsWith('reset') ? 'Demonstração reiniciada.' : 'Dados removidos.');
     } catch (error) { toast(error.message, true); }
     finally { button.disabled = false; }
   });
-  setInterval(() => document.querySelectorAll('.ttl-value').forEach(cell => { cell.textContent = ttl(cell.dataset.expires, cell.dataset.status); }), 1000);
+
   load().catch(error => toast(error.message, true));
 })();

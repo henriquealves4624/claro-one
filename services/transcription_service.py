@@ -7,6 +7,7 @@ from typing import Any
 from groq import Groq
 
 from config import settings
+from services.telemetry import ai_run
 
 
 logger = logging.getLogger(__name__)
@@ -101,31 +102,34 @@ def _transcription_text(response: Any) -> str:
     return str(getattr(response, "text", "") or "").strip()
 
 
-def transcribe_audio(audio_path: str | Path) -> str:
+def transcribe_audio(audio_path: str | Path, channel: str | None = "TELEFONE") -> str:
     path = Path(audio_path)
     validate_audio_file(path)
 
-    if settings.demo_fallback:
-        logger.warning("DEMO_FALLBACK ativo: utilizando transcrição explícita de demonstração")
-        return DEMO_TRANSCRIPT
+    with ai_run("TRANSCRICAO", channel) as run:
+        if settings.demo_fallback:
+            logger.warning("DEMO_FALLBACK ativo: utilizando transcrição explícita de demonstração")
+            run.success = True
+            return DEMO_TRANSCRIPT
 
-    try:
-        client = _create_client()
-        with path.open("rb") as audio_file:
-            response = client.audio.transcriptions.create(
-                file=(path.name, audio_file.read()),
-                model=settings.groq_transcription_model,
-                language="pt",
-                response_format="json",
-                temperature=0.0,
-            )
-        transcript = _transcription_text(response)
-    except TranscriptionError:
-        raise
-    except Exception as exc:
-        logger.exception("Falha na transcrição pela Groq")
-        raise _friendly_api_error(exc) from exc
+        try:
+            client = _create_client()
+            with path.open("rb") as audio_file:
+                response = client.audio.transcriptions.create(
+                    file=(path.name, audio_file.read()),
+                    model=settings.groq_transcription_model,
+                    language="pt",
+                    response_format="json",
+                    temperature=0.0,
+                )
+            transcript = _transcription_text(response)
+        except TranscriptionError:
+            raise
+        except Exception as exc:
+            logger.exception("Falha na transcrição pela Groq")
+            raise _friendly_api_error(exc) from exc
 
-    if not transcript:
-        raise TranscriptionError("A gravação não contém fala reconhecível em português.")
-    return transcript
+        if not transcript:
+            raise TranscriptionError("A gravação não contém fala reconhecível em português.")
+        run.success = True
+        return transcript

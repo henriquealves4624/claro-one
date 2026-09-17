@@ -16,7 +16,7 @@ if not exist ".env" (
   exit /b 1
 )
 
-".venv\Scripts\python.exe" -c "from config import settings; import sys; k=settings.groq_api_key.strip().lower(); sys.exit(0 if k and not k.startswith(('sua_', 'cole_', 'your_', 'gsk_xxx')) else 1)"
+".venv\Scripts\python.exe" -c "from config import settings; import sys; k=settings.groq_api_key.strip().lower(); sys.exit(0 if k and not k.startswith(('sua_', 'seu_', 'cole_', 'your_', 'gsk_xxx')) else 1)"
 if errorlevel 1 (
   echo ERRO: configure GROQ_API_KEY no arquivo .env.
   echo Obtenha a chave em https://console.groq.com/keys

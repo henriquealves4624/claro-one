@@ -8,7 +8,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from config import settings
-from models import CATEGORY_LABELS, DESTINATION_LABELS
+from models import CATEGORY_LABELS, CHANNEL_LABELS, DESTINATION_LABELS, STATUS_LABELS
 
 
 TZ = ZoneInfo(settings.timezone)
@@ -16,6 +16,11 @@ TZ = ZoneInfo(settings.timezone)
 
 def now_local() -> datetime:
     return datetime.now(TZ)
+
+
+def parse_datetime(value: str | datetime) -> datetime:
+    parsed = datetime.fromisoformat(value) if isinstance(value, str) else value
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=TZ)
 
 
 def normalize_cpf(cpf: str) -> str:
@@ -35,32 +40,32 @@ def mask_cpf(cpf: str) -> str:
     return f"***.{digits[3:6]}.{digits[6:9]}-**"
 
 
+def mask_phone(phone: str) -> str:
+    digits = re.sub(r"\D", "", phone or "")
+    if len(digits) < 6:
+        return "celular cadastrado"
+    return f"({digits[:2]}) •••••-{digits[-4:]}"
+
+
 def format_datetime(value: str | datetime | None) -> str:
     if not value:
         return "—"
-    parsed = datetime.fromisoformat(value) if isinstance(value, str) else value
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=TZ)
-    return parsed.astimezone(TZ).strftime("%d/%m/%Y às %H:%M")
+    return parse_datetime(value).astimezone(TZ).strftime("%d/%m/%Y às %H:%M")
 
 
 def format_time(value: str | datetime | None) -> str:
     if not value:
         return "—"
-    parsed = datetime.fromisoformat(value) if isinstance(value, str) else value
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=TZ)
-    return parsed.astimezone(TZ).strftime("%H:%M")
+    return parse_datetime(value).astimezone(TZ).strftime("%H:%M")
 
 
 def friendly_label(value: str | None) -> str:
     if not value:
         return "Não identificado"
-    if value in CATEGORY_LABELS:
-        return CATEGORY_LABELS[value]
-    if value in DESTINATION_LABELS:
-        return DESTINATION_LABELS[value]
-    return value.replace("_", " ").strip().title()
+    for labels in (CATEGORY_LABELS, DESTINATION_LABELS, CHANNEL_LABELS, STATUS_LABELS):
+        if value in labels:
+            return labels[value]
+    return value.replace("_", " ").strip().capitalize()
 
 
 def format_currency(value: Any) -> str:

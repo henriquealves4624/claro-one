@@ -32,6 +32,20 @@ class Settings:
     demo_fallback: bool = _as_bool(os.getenv("DEMO_FALLBACK"), False)
     max_upload_bytes: int = int(os.getenv("MAX_UPLOAD_MB", "25")) * 1024 * 1024
     timezone: str = "America/Sao_Paulo"
+    # Acesso dos canais: token de sessão do cliente e código de verificação por SMS.
+    channel_access_minutes: int = int(os.getenv("CHANNEL_ACCESS_MINUTES", "30"))
+    sms_code_minutes: int = int(os.getenv("SMS_CODE_MINUTES", "5"))
+    sms_max_attempts: int = int(os.getenv("SMS_MAX_ATTEMPTS", "5"))
+    sms_max_sends: int = int(os.getenv("SMS_MAX_SENDS", "3"))
+    # "simulado" (padrão, sem custo) ou "twilio" (opcional, exige conta própria).
+    sms_provider: str = os.getenv("SMS_PROVIDER", "simulado").strip().lower()
+    twilio_account_sid: str = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
+    twilio_auth_token: str = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
+    twilio_from_number: str = os.getenv("TWILIO_FROM_NUMBER", "").strip()
+    sms_test_destination: str = os.getenv("SMS_TEST_DESTINATION", "").strip()
+    # Premissa usada apenas na estimativa de tempo de triagem poupado (visão do gestor).
+    triage_minutes_estimate: float = float(os.getenv("TRIAGE_MINUTES_ESTIMATE", "2"))
+    cockpit_agent_name: str = "Atendente Demo"
 
 
 settings = Settings()

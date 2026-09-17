@@ -1,32 +1,143 @@
 {% extends "base.html" %}
-{% block title %}Cockpit do atendente — Claro One{% endblock %}
-{% block styles %}<link rel="stylesheet" href="{{ url_for('static', path='/css/atendente.css') }}?v=20260904.2">{% endblock %}
+{% block title %}Cockpit CCE — Claro One{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', path='/css/atendente.css') }}?v={{ asset_version }}"><link rel="stylesheet" href="{{ url_for('static', path='/css/gestor.css') }}?v={{ asset_version }}">{% endblock %}
 {% block content %}
-<div class="cockpit-header"><div><span class="eyebrow">OPERAÇÃO DE ATENDIMENTO</span><h1>Cockpit Claro One</h1></div><div class="operator"><span>Ambiente simulado</span><b>AT</b><div>Atendente Demo<small>Disponível</small></div></div></div>
-<div class="cockpit-layout">
-  <aside class="session-sidebar">
-    <div class="sidebar-title"><div><strong>Sessões relevantes</strong><span id="session-count">0</span></div><label for="category-filter">Categoria</label><select id="category-filter"><option value="">Todas</option><option value="FATURAMENTO">Faturamento</option><option value="INTERNET">Internet</option><option value="TELEFONIA">Telefonia</option><option value="CANCELAMENTO">Cancelamento</option><option value="OUTROS">Outros</option></select></div>
-    <div class="session-list" id="session-list"><div class="sidebar-loading">Carregando sessões...</div></div>
-  </aside>
-  <section class="cockpit-main" id="cockpit-main">
-    <div class="empty-cockpit" id="cockpit-empty"><span>CCE</span><h2>Nenhuma sessão selecionada</h2><p>As cápsulas ativas aparecerão na coluna lateral.</p></div>
-    <div class="cockpit-content hidden" id="cockpit-content">
-      <header class="customer-header"><div class="customer-avatar" id="cp-initials"></div><div><span class="eyebrow">CLIENTE</span><h2 id="cp-name"></h2><p><span id="cp-cpf"></span> · <span id="cp-protocol"></span></p></div><div class="customer-meta"><span id="cp-status" class="status-badge"></span><small>Origem: <b id="cp-origin"></b></small><small>Canal atual: <b id="cp-channel"></b></small></div></header>
-      <div id="cp-alert" class="inline-alert hidden"></div>
-      <div class="cockpit-grid">
-        <article class="snapshot-card">
-          <div class="card-heading"><div><span class="eyebrow">SNAPSHOT DE CONTEXTO</span><h3>Case estruturado</h3></div><span class="ai-pill">IA DE CONTEXTO</span></div>
-          <div class="snapshot-main"><div><small>INTENÇÃO</small><strong id="cp-intent"></strong></div><div><small>PROBLEMA</small><strong id="cp-problem"></strong></div><div class="wide"><small>RESUMO</small><p id="cp-summary"></p></div></div>
-          <div class="snapshot-metadata"><div><small>Categoria</small><b id="cp-category"></b></div><div><small>Setor de destino</small><b id="cp-destination"></b></div><div><small>Prioridade</small><b id="cp-priority"></b></div><div><small>Ação sugerida</small><b id="cp-action"></b></div></div>
-        </article>
-        <article class="timeline-card"><div class="card-heading"><div><span class="eyebrow">JORNADA</span><h3>Timeline real</h3></div></div><div class="timeline" id="cp-timeline"></div></article>
-        <article class="entities-card"><div class="card-heading"><div><span class="eyebrow">DADOS EXTRAÍDOS</span><h3>Entidades</h3></div></div><div class="entities-grid" id="cp-entities"></div></article>
-        <article class="lineage-card" id="cp-lineage"></article>
-      </div>
-      <footer class="cockpit-actions"><button class="button secondary" id="view-transcript">Ver transcrição original</button><div><button class="button ghost" id="cp-handoff">Assumir atendimento</button><button class="button primary" id="cp-resolve">Marcar como resolvido</button></div></footer>
-    </div>
-  </section>
+<div class="cockpit-header">
+  <div><span class="eyebrow">OPERAÇÃO DE ATENDIMENTO</span><h1>Cockpit Claro One</h1></div>
+  <nav class="cockpit-tabs" role="tablist" aria-label="Visões do Cockpit">
+    <button type="button" role="tab" id="tab-atendimento" aria-controls="panel-atendimento" aria-selected="true" data-tab="atendimento">Atendimento · CCE</button>
+    <button type="button" role="tab" id="tab-gestor" aria-controls="panel-gestor" aria-selected="false" data-tab="gestor">Visão do gestor</button>
+  </nav>
+  <div class="operator"><b>AT</b><div>Atendente Demo<small>Disponível</small></div></div>
 </div>
-<dialog id="transcript-modal" class="transcript-modal"><div class="modal-heading"><div><span class="eyebrow">IA DE TRANSCRIÇÃO · ÁUDIO → TEXTO</span><h2>Transcrição original</h2></div><button id="close-transcript" aria-label="Fechar">×</button></div><p>Transcrição gerada pela IA de voz</p><blockquote id="transcript-text"></blockquote><button class="button secondary" id="close-transcript-bottom">Fechar</button></dialog>
+
+<div class="tab-panel" id="panel-atendimento" role="tabpanel" aria-labelledby="tab-atendimento">
+  <div class="cockpit-layout">
+    <aside class="session-sidebar">
+      <div class="sidebar-title">
+        <div class="sidebar-heading"><strong>Clientes encontrados</strong><span id="customer-count">0</span><button type="button" class="icon-button" id="refresh-customers" aria-label="Atualizar lista">↻</button></div>
+        <label class="search-box" for="customer-search"><span aria-hidden="true">⌕</span><input id="customer-search" type="search" autocomplete="off" placeholder="CPF, protocolo, departamento ou canal"></label>
+        <div class="sidebar-filters">
+          <label>Departamento
+            <select id="department-filter"><option value="">Todos</option>{% for category in taxonomy.categories %}<option value="{{ category.department }}">{{ category.departmentLabel }}</option>{% endfor %}</select>
+          </label>
+          <label>Canal
+            <select id="channel-filter"><option value="">Todos</option>{% for channel in taxonomy.customerChannels %}<option value="{{ channel }}">{{ taxonomy.channels[channel] }}</option>{% endfor %}</select>
+          </label>
+        </div>
+      </div>
+      <div class="session-list" id="customer-list"><div class="sidebar-loading">Carregando clientes...</div></div>
+    </aside>
+
+    <section class="cockpit-main" id="cockpit-main">
+      <div class="empty-cockpit" id="cockpit-empty"><span>CCE</span><h2>Nenhum cliente selecionado</h2><p>Busque por CPF, protocolo, departamento ou canal na coluna lateral.</p></div>
+      <div class="cockpit-content hidden" id="cockpit-content">
+        <header class="customer-header">
+          <div class="customer-avatar" id="cp-initials"></div>
+          <div><span class="eyebrow">CLIENTE</span><h2 id="cp-name"></h2><p id="cp-identity"></p></div>
+          <div class="customer-meta"><span id="cp-status" class="status-badge"></span><small>Origem: <b id="cp-origin"></b></small><small>Canal atual: <b id="cp-channel"></b></small></div>
+        </header>
+        <div id="cp-alert" class="inline-alert hidden" role="status"></div>
+        <div class="cockpit-grid">
+          <div class="cockpit-left">
+            <article class="snapshot-card" id="snapshot-card">
+              <div class="card-heading">
+                <div><span class="eyebrow">SNAPSHOT DE CONTEXTO</span><h3 id="snapshot-title">Último contato</h3></div>
+                <div class="card-heading-actions"><span class="ai-pill" id="snapshot-source">IA DE CONTEXTO</span><button type="button" class="button ghost small hidden" id="snapshot-back">← Visão geral</button></div>
+              </div>
+              <p class="snapshot-context" id="snapshot-context"></p>
+              <div class="snapshot-main"><div><small>INTENÇÃO</small><strong id="cp-intent"></strong></div><div><small>PROBLEMA</small><strong id="cp-problem"></strong></div><div class="wide"><small id="cp-summary-label">RESUMO DO PROTOCOLO</small><p id="cp-summary"></p></div></div>
+              <div class="snapshot-metadata"><div><small>Departamento</small><b id="cp-department"></b></div><div><small>Protocolo</small><b id="cp-protocol"></b></div><div><small>Prioridade</small><b id="cp-priority"></b></div><div><small>Ação sugerida</small><b id="cp-action"></b></div></div>
+            </article>
+            <article class="entities-card"><div class="card-heading"><div><span class="eyebrow">DADOS EXTRAÍDOS</span><h3 id="entities-title">Entidades do protocolo</h3></div></div><div class="entities-grid" id="cp-entities"></div></article>
+            <article class="executive-card" id="executive-card">
+              <div class="card-heading"><div><span class="eyebrow">VIVÊNCIA DO CLIENTE NA CLARO</span><h3>Resumo executivo</h3></div><span class="ai-pill" id="executive-source">IA</span></div>
+              <div class="executive-kpis" id="executive-kpis"></div>
+              <div class="executive-body" id="executive-body"><p class="muted-empty">Gerando resumo...</p></div>
+            </article>
+          </div>
+          <article class="timeline-card">
+            <div class="card-heading"><div><span class="eyebrow">JORNADA · MAIS RECENTE PRIMEIRO</span><h3>Timeline de canais</h3></div><span class="count-pill" id="timeline-count">0</span></div>
+            <div class="timeline-filters">
+              <label>Canal<select id="tl-channel"><option value="">Todos</option>{% for channel in taxonomy.customerChannels %}<option value="{{ channel }}">{{ taxonomy.channels[channel] }}</option>{% endfor %}</select></label>
+              <label>Departamento<select id="tl-department"><option value="">Todos</option>{% for category in taxonomy.categories %}<option value="{{ category.department }}">{{ category.departmentLabel }}</option>{% endfor %}</select></label>
+              <label>Protocolo<select id="tl-protocol"><option value="">Todos</option></select></label>
+              <label>De<input type="date" id="tl-from"></label>
+              <label>Até<input type="date" id="tl-to"></label>
+              <button type="button" class="back-button" id="tl-clear">Limpar filtros</button>
+            </div>
+            <div class="timeline" id="cp-timeline"></div>
+          </article>
+          <article class="lineage-card" id="cp-lineage"></article>
+        </div>
+        <footer class="cockpit-actions">
+          <button type="button" class="button secondary" id="view-record">Ver transcrição do contato</button>
+          <div><span class="focus-protocol">Protocolo em foco: <b id="focus-protocol">—</b></span><button type="button" class="button ghost" id="cp-handoff">Assumir atendimento</button><button type="button" class="button primary" id="cp-resolve">Marcar como resolvido</button></div>
+        </footer>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="tab-panel hidden" id="panel-gestor" role="tabpanel" aria-labelledby="tab-gestor">
+  <div class="gestor-shell">
+    <div class="gestor-intro">
+      <div><span class="eyebrow">VISÃO DO GESTOR</span><h2>Funcionamento da CCE</h2><p>Quanto o contexto unificado está evitando nova triagem e sustentando o transbordo entre canais. Indicadores da solução, sem dados de satisfação.</p></div>
+    </div>
+    <div class="gestor-filters">
+      <div class="segmented" role="group" aria-label="Período">
+        <button type="button" data-days="7">Últimos 7 dias</button>
+        <button type="button" data-days="14" class="active">Últimos 14 dias</button>
+        <button type="button" data-days="30">Últimos 30 dias</button>
+        <button type="button" data-days="0">Todo o período</button>
+      </div>
+      <span class="provenance" id="gestor-provenance"></span>
+      <button type="button" class="icon-button" id="gestor-refresh" aria-label="Atualizar indicadores">↻</button>
+    </div>
+    <div class="gestor-body" id="gestor-body">
+      <section class="hero-row">
+        <div class="hero-figure">
+          <span>Continuidade entre canais</span>
+          <strong id="kpi-continuity">—</strong>
+          <small id="kpi-continuity-detail"></small>
+        </div>
+        <div class="kpi-grid" id="kpi-grid"></div>
+      </section>
+      <div class="chart-grid">
+        <article class="chart-card wide">
+          <header><h3>Contatos por dia</h3><p>Novos atendimentos e retomadas com contexto</p></header>
+          <div class="legend" id="daily-legend"></div>
+          <div class="column-chart" id="daily-chart"></div>
+          <details class="table-view"><summary>Ver tabela</summary><div id="daily-table"></div></details>
+        </article>
+        <article class="chart-card">
+          <header><h3>Transbordos entre canais</h3><p>Mudanças de canal dentro do mesmo protocolo, com o contexto preservado</p></header>
+          <div class="bar-chart" id="flows-chart"></div>
+          <details class="table-view"><summary>Ver tabela</summary><div id="flows-table"></div></details>
+        </article>
+        <article class="chart-card">
+          <header><h3>Contatos por canal</h3><p>Em quais canais o contexto foi reaproveitado</p></header>
+          <div class="legend" id="channels-legend"></div>
+          <div class="bar-chart" id="channels-chart"></div>
+          <details class="table-view"><summary>Ver tabela</summary><div id="channels-table"></div></details>
+        </article>
+        <article class="chart-card">
+          <header><h3>Protocolos por departamento</h3><p>Classificação da IA de contexto e pendências</p></header>
+          <div class="legend" id="departments-legend"></div>
+          <div class="bar-chart" id="departments-chart"></div>
+          <details class="table-view"><summary>Ver tabela</summary><div id="departments-table"></div></details>
+        </article>
+        <article class="chart-card">
+          <header><h3>Saúde das IAs</h3><p>Execuções reais no período (não inclui o histórico de demonstração)</p></header>
+          <div id="ai-health"></div>
+        </article>
+      </div>
+      <p class="gestor-footnote" id="gestor-footnote"></p>
+    </div>
+    <div class="viz-tooltip hidden" id="viz-tooltip" role="tooltip"></div>
+  </div>
+</div>
+
+<dialog id="transcript-modal" class="transcript-modal"></dialog>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', path='/js/atendente.js') }}?v=20260904.2"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='/js/gestor.js') }}?v={{ asset_version }}"></script><script src="{{ url_for('static', path='/js/atendente.js') }}?v={{ asset_version }}"></script>{% endblock %}

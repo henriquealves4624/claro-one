@@ -1,5 +1,5 @@
 (() => {
-  const { api, toast } = ClaroOne;
+  const { api, toast, store } = ClaroOne;
   const healthList = document.getElementById('health-list');
   const guidance = document.getElementById('health-guidance');
 
@@ -17,6 +17,7 @@
       const groqReady = health.groq === 'ok';
       setStatus(2, groqReady ? 'Disponível' : health.groq === 'not_configured' ? 'Chave ausente' : 'Indisponível', groqReady ? 'ok' : 'warning');
       setStatus(3, groqReady ? 'Disponível' : health.groq === 'model_missing' ? 'Modelo ausente' : health.groq === 'authentication_error' ? 'Chave inválida' : 'Indisponível', groqReady ? 'ok' : 'warning');
+      setStatus(4, health.sms_mode === 'REAL' ? 'Envio real' : 'Simulado', 'ok');
       if (!groqReady) {
         guidance.textContent = health.groq === 'not_configured'
           ? 'Configure GROQ_API_KEY no arquivo .env para habilitar o processamento.'
@@ -24,18 +25,18 @@
         guidance.classList.remove('hidden');
       } else guidance.classList.add('hidden');
     } catch (error) {
-      [0, 1, 2, 3].forEach(i => setStatus(i, 'Indisponível', 'error'));
+      [0, 1, 2, 3, 4].forEach(i => setStatus(i, 'Indisponível', 'error'));
     }
   }
 
   document.getElementById('refresh-health').addEventListener('click', loadHealth);
   document.getElementById('home-reset').addEventListener('click', async () => {
-    if (!confirm('Reiniciar a demonstração? Todas as CCEs e eventos serão removidos.')) return;
+    if (!confirm('Reiniciar a demonstração? Os atendimentos criados serão removidos e o histórico fictício será recriado.')) return;
     try {
       await api('/api/demo/reset', { method: 'POST' });
-      localStorage.removeItem('claroOneCpf');
-      localStorage.removeItem('claroOneSession');
+      ['claroOneCpf', 'claroOneProtocol'].forEach(key => store.remove(key));
       toast('Demonstração reiniciada.');
+      setTimeout(() => location.reload(), 600);
     } catch (error) { toast(error.message, true); }
   });
   loadHealth();

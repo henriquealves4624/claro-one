@@ -1,23 +1,25 @@
 CLARO ONE - DOCUMENTAÇÃO TÉCNICA
 
 1. O QUE É O CLARO ONE
-Prototipo academico que preserva o contexto de um atendimento quando o cliente muda de canal.
-Telefone/URA, WhatsApp e Minha Claro sao simulacoes. O Cockpit representa a visao interna do atendente.
+Prototipo academico que preserva o contexto do atendimento quando o cliente muda de canal.
+Telefone/URA, WhatsApp e Minha Claro sao simulacoes. O Cockpit representa a visao interna da Claro.
 
 2. OBJETIVO DO PROTÓTIPO
-Demonstrar que o problema, e nao a conversa inteira, pode acompanhar o cliente entre canais.
-Todos os clientes e dados exibidos sao ficticios.
+Demonstrar que o problema, e nao a conversa inteira, acompanha o cliente entre canais,
+e medir o quanto essa continuidade evita nova triagem. Todos os dados exibidos sao ficticios.
 
 3. COMO FUNCIONA O FLUXO
-O cliente informa o CPF, inicia um atendimento e gera uma CCE.
-No Telefone, a fala e gravada e processada somente depois do encerramento da ligacao.
-No WhatsApp, uma mensagem pode iniciar a CCE sem passar pela transcricao de audio.
-A CCE ativa pode ser retomada nos canais e consultada ou assumida no Cockpit sem repetir o problema.
+O cliente informa protocolo (opcional) e CPF. Se houver atendimento em aberto, Telefone e
+WhatsApp exigem um codigo por SMS antes de mostrar qualquer contexto; no Minha Claro o login cumpre esse papel.
+Confirmada a identidade, o cliente escolhe continuar o atendimento (retomada) ou tratar de outro tema (novo protocolo).
+No Telefone a fala e gravada e processada apos o encerramento. No WhatsApp a conversa e consolidada ao ser finalizada.
+No Minha Claro a solicitacao escrita no portal vira contexto. Toda passagem por um canal e registrada como um contato.
 
 4. ARQUITETURA
-O backend FastAPI entrega paginas Jinja2 e uma API interna REST.
-O frontend usa HTML, CSS e JavaScript vanilla com fetch, sem React ou Node.js.
-SQLite persiste clientes, CCEs e eventos. Os servicos de CCE, transcricao e contexto sao separados.
+Backend FastAPI com paginas Jinja2 e API interna REST; frontend em HTML, CSS e JavaScript puro.
+SQLite persiste clientes, protocolos, contatos, mensagens, eventos, acessos e telemetria.
+Servicos separados: cce (dominio), channel (canais do cliente), context e transcription (IA),
+sms (verificacao), insight (resumo executivo), metrics (visao do gestor).
 
 5. TECNOLOGIAS UTILIZADAS
 Python, FastAPI, Uvicorn, Jinja2, JavaScript vanilla, CSS, SQLite, Pydantic e SDK oficial da Groq.
@@ -26,74 +28,91 @@ Os arquivos INSTALAR.bat e INICIAR_CLARO_ONE.bat simplificam a execucao no Windo
 6. INTELIGÊNCIA ARTIFICIAL
 GroqCloud executa as duas etapas e exige internet e GROQ_API_KEY no backend.
 IA DE TRANSCRICAO: whisper-large-v3-turbo transforma audio em texto em portugues.
-IA DE CONTEXTO: openai/gpt-oss-20b transforma texto em um case estruturado.
-O resultado segue JSON Schema, e validado pelo Pydantic e normalizado antes de ser persistido.
-DEMO_FALLBACK e falso por padrao e, quando ativado manualmente, aparece na interface.
+IA DE CONTEXTO: openai/gpt-oss-20b transforma texto em um case estruturado e escreve o resumo executivo.
+O resultado segue JSON Schema estrito, e validado pelo Pydantic e higienizado antes de ser persistido.
+A IA nunca conversa com o cliente: as respostas exibidas nos canais sao roteiros fixos do sistema.
+DEMO_FALLBACK e falso por padrao; quando ativado, a classificacao passa a ser local por palavras-chave e aparece na interface.
 
-7. CÁPSULA DE CONTEXTO EFÊMERA
-A CCE guarda protocolo, CPF, cliente, status, canais, transcricao, intencao, categoria,
-problema, resumo, entidades, destino, acao sugerida, prioridade e datas.
-O TTL padrao e de duas horas. Uma retomada renova o TTL; sessoes expiradas ou resolvidas nao sao retomadas.
-A timeline registra eventos reais como criacao, transcricao, contextualizacao, mudanca de canal e resolucao.
+7. MODELO DE DADOS DA CCE
+PROTOCOLO (cce_sessions): um atendimento sobre um tema, com contexto consolidado, status, prioridade,
+departamento de destino, atendente responsavel e validade. O mesmo CPF pode ter varios protocolos.
+CONTATO (cce_interactions): cada passagem do cliente por um canal dentro de um protocolo, com tipo
+(abertura ou retomada), canal, data, atendente, resumo do que foi tratado e forma de verificacao.
+MENSAGENS (cce_messages): conversa registrada no WhatsApp e no portal.
+EVENTOS (cce_events): trilha tecnica exibida na inspecao.
+A validade padrao da CCE vem de CCE_TTL_HOURS e e renovada a cada retomada; o valor nao e exibido nas telas.
 
 8. BANCO DE DADOS
-O arquivo data/claro_one.db usa as tabelas customers, cce_sessions e cce_events.
-O schema e o seed sao idempotentes: reiniciar a aplicacao nao duplica clientes.
-O reset remove sessoes e eventos, preserva ou recria os clientes e nao apaga o schema.
+O arquivo data/claro_one.db usa PRAGMA user_version para versionar o schema.
+Ao subir com um banco de versao anterior, as tabelas de atendimento sao recriadas e o historico
+ficticio e semeado (os clientes sao preservados). O reset recria o historico; a limpeza deixa a base vazia.
 
 9. INTERFACES E CANAIS
-Home: acesso as simulacoes, status tecnico, clientes de teste e reset.
-Telefone/URA: CPF, setor, microfone pelo MediaRecorder e upload manual de audio.
-WhatsApp: atendimento por texto ou retomada usando resumo, categoria e destino da CCE.
-Minha Claro: navegacao adaptada a categoria; sem CCE, permite navegacao manual simulada.
-Cockpit: lista, filtro por categoria, snapshot, entidades, timeline, transcricao e acoes do atendente.
-Debug: lista tecnica e JSON completo das CCEs armazenadas.
+Home: diagrama da jornada, simulacoes, roteiro de teste, status tecnico e reset.
+Telefone/URA: teclado numerico, protocolo, CPF, SMS, menu 1/2, gravacao pelo microfone ou upload.
+WhatsApp: conversa com protocolo, CPF, SMS, botoes de retomada ou outro tema e finalizacao pela IA.
+Minha Claro: login simulado, continuidade direcionada a area do tema e formulario que alimenta a CCE.
+Cockpit: busca de clientes, snapshot, entidades, timeline de canais filtravel, resumo executivo e acoes.
+Visao do gestor: indicadores de continuidade, transbordo, classificacao e saude das IAs.
+Debug: tabela de protocolos e JSON completo com contatos, mensagens e eventos.
 
 10. CATEGORIAS E DEPARTAMENTOS
-FATURAMENTO -> FINANCEIRO
 INTERNET -> SUPORTE_TECNICO
 TELEFONIA -> SUPORTE_TELEFONIA
+FATURAMENTO -> FINANCEIRO
+TV -> SUPORTE_TV
+PLANOS -> COMERCIAL
+INSTALACAO -> SERVICOS_CAMPO
 CANCELAMENTO -> RETENCAO_CANCELAMENTO
-OUTROS -> OUTROS (label amigavel: Atendimento geral)
+OUTROS -> OUTROS (departamento para temas fora das filas principais)
 Valores desconhecidos, ambiguos ou incoerentes sao normalizados para OUTROS sem apagar resumo ou entidades.
 
 11. PRINCIPAIS ARQUIVOS
-app.py inicia a aplicacao; config.py le o ambiente; database.py define schema e clientes.
-models.py centraliza taxonomia e status; schemas.py valida entradas e o case da IA.
-services/cce_service.py controla CCE, TTL e eventos.
-services/transcription_service.py envia audio a Groq; services/context_service.py gera o case.
-routes/pages.py entrega as telas; routes/api.py contem a API interna.
-templates/ e static/ contem as interfaces; tests/ contem os testes automatizados.
+app.py inicia a aplicacao; config.py le o ambiente; database.py define schema e migracao; demo_seed.py semeia o historico.
+models.py centraliza taxonomia e rotulos; schemas.py valida entradas e saidas; privacy.py mascara dados sensiveis.
+services/: cce_service, channel_service, context_service, transcription_service, sms_service, insight_service,
+metrics_service e telemetry. routes/: api.py (interna) e channel_api.py (canais). templates/ e static/ contem as interfaces.
 
 12. ENDPOINTS DA API
-GET /api/health e GET /api/customers/{cpf}
-POST /api/sessions e POST /api/sessions/message
-GET /api/sessions, GET /api/sessions/active/{cpf} e GET /api/sessions/{id}
-POST /api/sessions/{id}/call/start, /audio, /transcribe e /contextualize
-POST /api/sessions/{id}/resume, /route-human, /handoff e /resolve
-GET /api/sessions/{id}/events e DELETE /api/sessions/{id}
-POST /api/demo/reset e POST /api/demo/clear
+Canais (exigem o cabecalho X-Channel-Token apos a identificacao):
+POST /api/channel/identify, /verify, /sms/resend
+GET /api/channel/cases e POST /api/channel/cases, /cases/phone, /cases/{protocolo}/resume
+POST /api/channel/interactions/{id}/messages, /call/start, /audio, /transcribe, /finish e DELETE /interactions/{id}
+Interna: GET /api/health, /api/sessions, /api/sessions/{id}, /api/sessions/{id}/events,
+/api/cockpit/customers, /api/cockpit/customers/{cpf}, /api/cockpit/customers/{cpf}/executive-summary,
+/api/cockpit/interactions/{id}/record, /api/cockpit/metrics,
+POST /api/sessions/{id}/handoff, /api/sessions/{id}/resolve, /api/demo/reset e /api/demo/clear.
 
 13. INSTALAÇÃO E INICIALIZAÇÃO
 Execute INSTALAR.bat uma vez. Obtenha a chave em https://console.groq.com/keys e grave no .env:
 GROQ_API_KEY=chave_da_conta
-As demais variaveis sao GROQ_TRANSCRIPTION_MODEL, GROQ_CONTEXT_MODEL, CCE_TTL_HOURS,
-DEMO_FALLBACK e MAX_UPLOAD_MB. Depois execute INICIAR_CLARO_ONE.bat e abra http://127.0.0.1:8000.
+As demais variaveis sao GROQ_TRANSCRIPTION_MODEL, GROQ_CONTEXT_MODEL, CCE_TTL_HOURS, DEMO_FALLBACK,
+MAX_UPLOAD_MB, SMS_PROVIDER, CHANNEL_ACCESS_MINUTES e TRIAGE_MINUTES_ESTIMATE.
+Depois execute INICIAR_CLARO_ONE.bat e abra http://127.0.0.1:8000.
 O upload manual aceita MP3, WAV, M4A, WEBM e OGG como alternativa ao microfone.
 
-14. CLIENTES DE DEMONSTRAÇÃO
-123.456.789-00 Lucas de Alencar; 987.654.321-00 Marina Costa; 111.222.333-44 Rafael Nogueira.
-222.333.444-55 Ana Beatriz Moura; 333.444.555-66 Bruno Tavares Lima; 444.555.666-77 Camila Ribeiro Nunes.
-555.666.777-88 Diego Martins Rocha; 666.777.888-99 Elisa Fernandes Prado; 777.888.999-00 Felipe Andrade Melo.
-888.999.000-11 Gabriela Souza Pires; 999.000.111-22 Henrique Barros Dias; 101.202.303-44 Isabela Monteiro Luz.
+14. CLIENTES E HISTÓRICO DE DEMONSTRAÇÃO
+123.456.789-00 Lucas de Alencar (protocolo 123 em aberto); 987.654.321-00 Marina Costa (sem historico);
+111.222.333-44 Rafael Nogueira; 222.333.444-55 Ana Beatriz Moura; 333.444.555-66 Bruno Tavares Lima;
+444.555.666-77 Camila Ribeiro Nunes; 555.666.777-88 Diego Martins Rocha; 666.777.888-99 Elisa Fernandes Prado;
+777.888.999-00 Felipe Andrade Melo; 888.999.000-11 Gabriela Souza Pires; 999.000.111-22 Henrique Barros Dias;
+101.202.303-44 Isabela Monteiro Luz. Os registros semeados usam source=DEMO e aparecem identificados nas telas.
 
 15. SEGURANÇA E PRIVACIDADE
-A chave fica apenas no .env, que nao e versionado, e nunca deve ser enviada ao navegador ou aos logs.
-Uploads recebem nomes internos, extensoes e assinaturas sao validadas, e o tamanho e limitado.
-O Cockpit e o Debug mascaram CPFs quando o numero completo nao e necessario.
+A chave fica apenas no .env, nao versionado, e nunca e enviada ao navegador ou aos logs.
+Verificacao por SMS: codigo de 6 digitos guardado apenas como hash, com validade, limite de tentativas e de reenvios.
+Acesso do canal por token opaco com validade curta; o canal so enxerga uma projecao reduzida do protocolo
+(sem CPF, transcricao ou dados internos) e apenas depois da verificacao.
+Minimizacao: CPF, CNPJ, cartao (Luhn), telefone, e-mail, senha, codigo e dados bancarios sao mascarados
+antes de qualquer envio as IAs e antes de serem persistidos; a saida da IA passa pelo mesmo filtro e
+entidades com chaves sensiveis sao descartadas. A gravacao e apagada assim que a transcricao e guardada.
+Prompt injection: o texto do cliente vai delimitado por tags e o prompt instrui a ignorar instrucoes contidas nele;
+a saida e restrita por JSON Schema estrito e validada, e nenhum texto livre do modelo e devolvido ao cliente.
+O Cockpit e o Debug mascaram CPFs; uploads recebem nomes internos, com extensao, assinatura e tamanho validados.
 
 16. LIMITAÇÕES DO PROTÓTIPO
-PROTOTIPO: FastAPI, SQLite, GroqCloud, interfaces e canais simulados, dados ficticios.
-Nao ha telefonia, Meta/WhatsApp, CRM, billing, autenticacao ou infraestrutura real da Claro.
-PRODUCAO CONCEITUAL: integracoes oficiais, infraestrutura corporativa, canais reais e controles
-empresariais de seguranca, privacidade, auditoria, disponibilidade e retencao de dados.
+PROTOTIPO: FastAPI, SQLite, GroqCloud, interfaces e canais simulados, dados ficticios, SMS simulado.
+Nao ha telefonia, Meta/WhatsApp, CRM, billing, autenticacao corporativa ou infraestrutura real da Claro.
+A estimativa de tempo de triagem poupado usa uma premissa configuravel (TRIAGE_MINUTES_ESTIMATE).
+PRODUCAO CONCEITUAL: integracoes oficiais, infraestrutura corporativa, canais reais, gestao de segredos e
+controles empresariais de seguranca, privacidade, auditoria, disponibilidade e retencao de dados.

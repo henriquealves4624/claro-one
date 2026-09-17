@@ -1,17 +1,31 @@
 {% extends "base.html" %}
 {% block title %}Inspeção técnica — Claro One{% endblock %}
-{% block styles %}<link rel="stylesheet" href="{{ url_for('static', path='/css/debug.css') }}?v=20260904.2">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', path='/css/debug.css') }}?v={{ asset_version }}">{% endblock %}
 {% block content %}
 <section class="debug-shell">
-  <header class="debug-header"><div><span class="eyebrow">FERRAMENTA TÉCNICA</span><h1>Inspeção da CCE</h1><p>Estado persistido no SQLite para comprovação durante a apresentação.</p></div><div class="debug-actions"><button class="button ghost" id="debug-clear">Limpar dados</button><button class="button danger-outline" id="debug-reset">Reiniciar demonstração</button></div></header>
+  <header class="debug-header">
+    <div><span class="eyebrow">FERRAMENTA TÉCNICA</span><h1>Inspeção da CCE</h1><p>Estado persistido no SQLite para comprovação durante a apresentação: protocolos, contatos por canal, mensagens e eventos.</p></div>
+    <div class="debug-actions"><button class="button ghost" id="debug-clear">Limpar dados</button><button class="button danger-outline" id="debug-reset">Reiniciar demonstração</button></div>
+  </header>
   <div id="debug-alert" class="inline-alert hidden"></div>
   <div class="debug-layout">
-    <div class="debug-table-card"><div class="table-heading"><strong>Sessões armazenadas</strong><button id="debug-refresh" class="icon-button">↻</button></div><div class="table-scroll"><table><thead><tr><th>Protocolo</th><th>CPF</th><th>Cliente</th><th>Status</th><th>Categoria</th><th>Destino</th><th>Canal</th><th>Criada em</th><th>Expira em / TTL</th></tr></thead><tbody id="debug-sessions"><tr><td colspan="9">Carregando...</td></tr></tbody></table></div></div>
-    <aside class="json-panel"><div class="json-heading"><div><span>JSON COMPLETO</span><strong id="json-protocol">Selecione uma CCE</strong></div><button id="copy-json" class="icon-button" title="Copiar JSON">⧉</button></div><pre id="session-json">{
-  "mensagem": "Selecione uma sessão na tabela"
-}</pre></aside>
+    <div class="debug-table-card">
+      <div class="table-heading"><strong>Protocolos armazenados</strong><button id="debug-refresh" class="icon-button" aria-label="Atualizar">↻</button></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Protocolo</th><th>CPF</th><th>Cliente</th><th>Status</th><th>Categoria</th><th>Departamento</th><th>Canal atual</th><th>Atendente</th><th>Aberto em</th><th>Atualizado em</th></tr></thead>
+          <tbody id="debug-sessions"><tr><td colspan="10">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <aside class="json-panel">
+      <div class="json-heading"><div><span>JSON COMPLETO</span><strong id="json-protocol">Selecione um protocolo</strong></div><button id="copy-json" class="icon-button" title="Copiar JSON">⧉</button></div>
+      <pre id="session-json">{
+  "mensagem": "Selecione um protocolo na tabela"
+}</pre>
+    </aside>
   </div>
 </section>
-<dialog id="reset-modal" class="confirm-modal"><h2 id="reset-title">Reiniciar demonstração?</h2><p id="reset-description">Todas as CCEs, eventos e gravações serão removidos. Os clientes fictícios serão preservados.</p><div><button class="button ghost" id="cancel-reset">Cancelar</button><button class="button danger" id="confirm-reset">Sim, reiniciar</button></div></dialog>
+<dialog id="reset-modal" class="confirm-modal"><h2 id="reset-title">Reiniciar demonstração?</h2><p id="reset-description">Todos os protocolos, contatos e gravações serão removidos e o histórico fictício será recriado.</p><div><button class="button ghost" id="cancel-reset">Cancelar</button><button class="button danger" id="confirm-reset">Sim, reiniciar</button></div></dialog>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', path='/js/debug.js') }}?v=20260904.2"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='/js/debug.js') }}?v={{ asset_version }}"></script>{% endblock %}

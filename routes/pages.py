@@ -6,9 +6,13 @@ from fastapi.templating import Jinja2Templates
 
 from config import BASE_DIR, settings
 from database import DEMO_CUSTOMERS
-from utils import format_currency, format_datetime, format_time, friendly_label, mask_cpf
-from utils import format_cpf
+from demo_seed import DEMO_PROTOCOL
+from models import taxonomy_payload
+from services import cce_service
+from utils import format_cpf, format_currency, format_datetime, format_time, friendly_label, mask_cpf
 
+
+ASSET_VERSION = "20260917.3"
 
 router = APIRouter()
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -19,6 +23,7 @@ templates.env.filters.update(
     cpf_mask=mask_cpf,
     currency=format_currency,
 )
+templates.env.globals.update(asset_version=ASSET_VERSION, taxonomy=taxonomy_payload())
 
 
 def _render(request: Request, template: str, page: str, **context) -> HTMLResponse:
@@ -31,25 +36,34 @@ def _render(request: Request, template: str, page: str, **context) -> HTMLRespon
 
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    demo_customers = [
-        {"cpf": format_cpf(cpf), "name": name} for cpf, name in DEMO_CUSTOMERS
-    ]
-    return _render(request, "index.html", "home", demo_customers=demo_customers)
+    demo_customers = []
+    for cpf, name in DEMO_CUSTOMERS:
+        open_cases = cce_service.find_open_cases(cpf)
+        demo_customers.append(
+            {
+                "cpf": format_cpf(cpf),
+                "name": name,
+                "open_protocols": [case["protocol"] for case in open_cases],
+            }
+        )
+    return _render(
+        request, "index.html", "home", demo_customers=demo_customers, demo_protocol=DEMO_PROTOCOL
+    )
 
 
 @router.get("/telefone", response_class=HTMLResponse)
 def telefone(request: Request):
-    return _render(request, "telefone.html", "telefone")
+    return _render(request, "telefone.html", "telefone", demo_protocol=DEMO_PROTOCOL)
 
 
 @router.get("/whatsapp", response_class=HTMLResponse)
 def whatsapp(request: Request):
-    return _render(request, "whatsapp.html", "whatsapp")
+    return _render(request, "whatsapp.html", "whatsapp", demo_protocol=DEMO_PROTOCOL)
 
 
 @router.get("/minha-claro", response_class=HTMLResponse)
 def minha_claro(request: Request):
-    return _render(request, "minha_claro.html", "minha-claro")
+    return _render(request, "minha_claro.html", "minha-claro", demo_protocol=DEMO_PROTOCOL)
 
 
 @router.get("/atendente", response_class=HTMLResponse)
