@@ -27,4 +27,4 @@ CLIENTES FICTICIOS
 999.000.111-22 - Henrique Barros Dias
 101.202.303-44 - Isabela Monteiro Luz
 
-RESET: na Home, clique em "Limpar / reiniciar demonstracao".
+RESET: na Home, clique em "Limpar / reiniciar demonstracao"
